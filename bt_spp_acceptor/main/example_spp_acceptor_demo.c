@@ -1,11 +1,3 @@
-#include <stdio.h>
-#include "bluetooth_client.h"
-
-void func(void)
-{
-
-}
-
 /*
    This example code is in the Public Domain (or CC0 licensed, at your option.)
 
@@ -18,7 +10,16 @@ void func(void)
 #include <string.h>
 #include <stdbool.h>
 #include <stdio.h>
-
+#include "nvs.h"
+#include "nvs_flash.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "esp_log.h"
+#include "esp_bt.h"
+#include "esp_bt_main.h"
+#include "esp_gap_bt_api.h"
+#include "esp_bt_device.h"
+#include "esp_spp_api.h"
 
 #include "time.h"
 #include "sys/time.h"
@@ -28,7 +29,7 @@ void func(void)
 #define EXAMPLE_DEVICE_NAME "ESP_SPP_ACCEPTOR"
 #define SPP_SHOW_DATA 0
 #define SPP_SHOW_SPEED 1
-#define SPP_SHOW_MODE SPP_SHOW_DATA    /*Choose show mode: show data or speed*/
+#define SPP_SHOW_MODE SPP_SHOW_SPEED    /*Choose show mode: show data or speed*/
 
 static const esp_spp_mode_t esp_spp_mode = ESP_SPP_MODE_CB;
 
@@ -38,8 +39,17 @@ static long data_num = 0;
 static const esp_spp_sec_t sec_mask = ESP_SPP_SEC_AUTHENTICATE;
 static const esp_spp_role_t role_slave = ESP_SPP_ROLE_SLAVE;
 
-static IntConsumer_t callback;
-
+static void print_speed(void)
+{
+    float time_old_s = time_old.tv_sec + time_old.tv_usec / 1000000.0;
+    float time_new_s = time_new.tv_sec + time_new.tv_usec / 1000000.0;
+    float time_interval = time_new_s - time_old_s;
+    float speed = data_num * 8 / time_interval / 1000.0;
+    ESP_LOGI(SPP_TAG, "speed(%fs ~ %fs): %f kbit/s" , time_old_s, time_new_s, speed);
+    data_num = 0;
+    time_old.tv_sec = time_new.tv_sec;
+    time_old.tv_usec = time_new.tv_usec;
+}
 
 static void esp_spp_cb(esp_spp_cb_event_t event, esp_spp_cb_param_t *param)
 {
@@ -66,9 +76,17 @@ static void esp_spp_cb(esp_spp_cb_event_t event, esp_spp_cb_param_t *param)
         ESP_LOGI(SPP_TAG, "ESP_SPP_CL_INIT_EVT");
         break;
     case ESP_SPP_DATA_IND_EVT:
+#if (SPP_SHOW_MODE == SPP_SHOW_DATA)
         ESP_LOGI(SPP_TAG, "ESP_SPP_DATA_IND_EVT len=%d handle=%d",
                  param->data_ind.len, param->data_ind.handle);
-        callback(param->data_ind.data[0]-0x30); // TODO: safety checks.
+        esp_log_buffer_hex("",param->data_ind.data,param->data_ind.len);
+#else
+        gettimeofday(&time_new, NULL);
+        data_num += param->data_ind.len;
+        if (time_new.tv_sec - time_old.tv_sec >= 3) {
+            print_speed();
+        }
+#endif
         break;
     case ESP_SPP_CONG_EVT:
         ESP_LOGI(SPP_TAG, "ESP_SPP_CONG_EVT");
@@ -146,13 +164,14 @@ void esp_bt_gap_cb(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param)
     return;
 }
 
-void PDMBluetooth_btInit(void)
-{   
+void app_main(void)
+{
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());
         ret = nvs_flash_init();
     }
+    ESP_ERROR_CHECK( ret );
 
     ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_BLE));
 
@@ -191,6 +210,14 @@ void PDMBluetooth_btInit(void)
         ESP_LOGE(SPP_TAG, "%s spp init failed: %s\n", __func__, esp_err_to_name(ret));
         return;
     }
+
+#if (CONFIG_BT_SSP_ENABLED == true)
+    /* Set default parameters for Secure Simple Pairing */
+    esp_bt_sp_param_t param_type = ESP_BT_SP_IOCAP_MODE;
+    esp_bt_io_cap_t iocap = ESP_BT_IO_CAP_IO;
+    esp_bt_gap_set_security_param(param_type, &iocap, sizeof(uint8_t));
+#endif
+
     /*
      * Set default parameters for Legacy Pairing
      * Use variable pin, input pin code when pairing
@@ -198,13 +225,4 @@ void PDMBluetooth_btInit(void)
     esp_bt_pin_type_t pin_type = ESP_BT_PIN_TYPE_VARIABLE;
     esp_bt_pin_code_t pin_code;
     esp_bt_gap_set_pin(pin_type, 0, pin_code);
-}
-
-void PDMBluetooth_init(IntConsumer_t onDataReceived) {
-    callback = onDataReceived;
-    PDMBluetooth_btInit();
-}
-
-void PDMBluetooth_task() {
-    ;
 }

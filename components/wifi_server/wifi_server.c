@@ -20,7 +20,7 @@
 
 static const char *TAG = "wifi_server";
 static IntConsumer_t onDataReceivedCallback;
-static uint32_t reconnect = 0;
+static uint8_t reconnect = 0;
 
 
 /** Internal Connection Constants. ****************/
@@ -77,11 +77,11 @@ void PDMNetwork_send(const uint32_t message) {
 }
 
 void PDMNetwork_task() {
-    ESP_LOGI(TAG, "Task Running");
+    ESP_LOGD(TAG, "Task Running");
 
     if (isDataToSendReady) {
         int err = send(sock, dataToSend, strlen(dataToSend), 0);
-        ESP_LOGI(TAG, "Message sent");
+        ESP_LOGD(TAG, "Message sent");
         if (err < 0) {
             ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
             PDMNetwork_reinit();
@@ -89,15 +89,17 @@ void PDMNetwork_task() {
         isDataToSendReady = false;
     }
 
-    ESP_LOGI(TAG, "Attempting Reception");
+    ESP_LOGD(TAG, "Attempting Reception");
     int len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, MSG_DONTWAIT);
-    ESP_LOGI(TAG, "After Reception %d", len);
+    ESP_LOGD(TAG, "After Reception %d", len);
     if (len > 0) {
+        reconnect = 0;
         onDataReceivedCallback((uint32_t)(rx_buffer[0]-0x30));    
         rx_buffer[len] = 0; // Null-terminate whatever we received and treat like a string
         ESP_LOGI(TAG, "Received %d bytes from %s:", len, host_ip);
-        ESP_LOGI(TAG, "%s", rx_buffer);
-        // PDMNetwork_reinit();
         return;
+    }
+    if (len < 0 && (++reconnect % 10 == 0)) {
+        PDMNetwork_reinit();
     }
 }

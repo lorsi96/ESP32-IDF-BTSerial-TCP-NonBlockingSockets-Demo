@@ -67,9 +67,10 @@ class TcpServer:
                     mode = randint(0, 2)
                     print('Sending: ' + str(mode))
                     conn.send(str(mode).encode())
-                    data = conn.recv(1024, )
-                    if data:
-                        print('Received' + str(data))
+                    if (mode == 0):
+                        data = conn.recv(1024, )
+                        if data:
+                            print('Received' + str(data))
                     time.sleep(5)
                 conn.close()
             except socket.error as e:
