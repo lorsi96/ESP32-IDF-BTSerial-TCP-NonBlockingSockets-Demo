@@ -99,7 +99,4 @@ void PDMNetwork_task() {
         ESP_LOGI(TAG, "Received %d bytes from %s:", len, host_ip);
         return;
     }
-    if (len < 0 && (++reconnect % 10 == 0)) {
-        PDMNetwork_reinit();
-    }
 }

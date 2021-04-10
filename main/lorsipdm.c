@@ -64,6 +64,7 @@ static PDM_RequestEvent_t cachedEvent_ = {
 static void PDM_WiFiDataHandler(uint32_t data) {
 #ifdef LORSI_NET
     // If another event is being saved or enqueued, ignore this request.
+    ESP_LOGI("Main", "Wifi: %d", data);
     if(isRequestPending_ || isCachedEventLocked_)  { 
         return;
     }
@@ -78,6 +79,7 @@ static void PDM_WiFiDataHandler(uint32_t data) {
 static void PDM_BtDataHandler(uint32_t data) {
 #ifdef LORSI_BT
     // If another event is being saved or enqueued, ignore this request.
+    ESP_LOGI("Main", "BT");
     if(isRequestPending_ || isCachedEventLocked_)  { 
         return;
     }
@@ -93,10 +95,12 @@ static void PDM_BtDataHandler(uint32_t data) {
 /* FSM Handlers                                             */
 /************************************************************/
 static inline bool isBtEnabled() {
+    ESP_LOGI("Main", "WifiRQ");
     return currentState_ != BT_DISABLED;
 }
 
 static inline uint32_t getBlinkingStatusCode() {
+    ESP_LOGI("Main", "WifiRQBlink");
     return (uint32_t)currentState_; // Code matches state enum value.
 }
 
@@ -113,10 +117,12 @@ static void toggleAndSendBTServiceStatus() {
 }
 
 static void setFastBlink() {
+    ESP_LOGI("Main", "BlinkFast");
     // TODO
 }
 
 static void setSlowBlink() {
+    ESP_LOGI("Main", "BlinkSlow");
     // TODO
 }
 
@@ -144,12 +150,17 @@ static const PDM_FsmEntry_t fsmTable_[] = {
 /* FSM Methods                                              */
 /************************************************************/
 static void fsmSpin_() {
+    if(!isRequestPending_) {
+        return;
+    }
     for(BaseType_t i=0; i<sizeof(fsmTable_)/sizeof(PDM_FsmEntry_t); i++) {
         if(fsmTable_[i].currentState == currentState_ &&
            fsmTable_[i].event.source == cachedEvent_.source &&
            fsmTable_[i].event.data == cachedEvent_.data) {
                fsmTable_[i].handler();
                currentState_ = fsmTable_[i].nextState;
+               ESP_LOGI("Main", "Current: %d", currentState_);
+               break;
            }
     }
     isRequestPending_ = false;

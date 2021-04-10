@@ -36,8 +36,8 @@ MENU_STR = '''
 -------------------------------------------------------
 Choose one of the following options and press [Enter]
 (0) Query Blink Speed.
-(2) Query Server status.
-(1) Toggle Bluetooth Server on/off. 
+(1) Query Server status.
+(2) Toggle Bluetooth Server on/off. 
 (9) Exit.
 -------------------------------------------------------
 
@@ -51,7 +51,7 @@ CMD_SENT_MESSAGES = {
 
 BLINK_SPEED_DECODER = {
     '0': 'ESP32 is Blinking Slowly',
-    '1': 'ESP32 is Blinking Fast'
+    '1': 'ESP32 is Blinking Fast',
     '2': 'ESP32 is Not Blinking'
 }
 
@@ -121,7 +121,8 @@ class TcpServer:
                     print(CMD_SENT_MESSAGES[choice])
                     conn.send(str(choice).encode())
                     data = conn.recv(1024, )
-                    print(DECODERS[choice][str(data)[2]]) # Data comes in "b'n\0" format, where n is the interesting part.
+                    if data:
+                        print(DECODERS[choice][str(data)[2]]) # Data comes in "b'n\0" format, where n is the interesting part.    
                     time.sleep(5)
                 conn.close()
             except socket.error as e:
