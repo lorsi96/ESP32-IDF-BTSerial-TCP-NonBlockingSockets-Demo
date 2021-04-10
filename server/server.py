@@ -52,6 +52,7 @@ CMD_SENT_MESSAGES = {
 BLINK_SPEED_DECODER = {
     '0': 'ESP32 is Blinking Slowly',
     '1': 'ESP32 is Blinking Fast'
+    '2': 'ESP32 is Not Blinking'
 }
 
 SERVER_STATUS_DECODER = {
