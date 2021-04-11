@@ -6,7 +6,7 @@ name: CI
 on:
   # Triggers the workflow on push or pull request events but only for the master branch
   push:
-    branches: [ master, develop ]
+    branches: [ master ]
   pull_request:
     branches: [ master ]
 
@@ -17,8 +17,10 @@ on:
 jobs:
   # This workflow contains a single job called "build"
   build:
-    # The type of runner that the job will run on
     runs-on: ubuntu-latest
+
+    container:
+      image:  espressif/idf:latest
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -26,12 +28,6 @@ jobs:
       - uses: actions/checkout@v2
       
       # Builds ESP IDF Application
-      - name: Install ESP-IDF
-        uses: CalinRadoni/esp-idf-v4-action@v2
-        with:
-          esp_idf_version: 'v4.3'
-
-      - name: Build
-        run: |
-          source ~/esp/esp-idf/export.sh
-          idf.py build
+      - name: ESP-IDF Build
+      - run: idf.py build
+          
