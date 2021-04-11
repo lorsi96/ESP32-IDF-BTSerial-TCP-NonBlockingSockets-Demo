@@ -12,21 +12,20 @@ This Demo program showcases the following items:
 The Application responds to different external events and changes the Built-In LED behavior in accordance.
 
 ### TCP Server
-From the TCP server the user can request the ESP32:
+From the TCP server the user can request the ESP32 to:
 - Know if  the LED is blinking and how fast it is doing so.
 - Query if it is listening to BT events.
 - Enable/Disable capturing BT events.
 
 ### Classic Serial Bt
 From a Bluetooth device connected to the ESP32 the user can:
-- Send a 0 to toggle slow blinking
-- Send a 1 to toggle fast blinking
-Note that this will not work if the user has disabled capturing BT events
-from the server.
+- Send a 0 to toggle slow blinking.
+- Send a 1 to toggle fast blinking.
+Note that this will not work if the user has disabled capturing BT events from the server.
 
 ### Program State Diagram
-- This charts shows which commands produce a change in the LED Blinking State
-- Note that, as stated in above sections, other commands exist but are not listed here as they don't produce any state update
+- This chart shows which commands produce a change in the LED Blinking State.
+- Note that, as stated in above sections, other commands exist but are not listed here as they don't produce any state update.
 
 ![FSM](./images/FSM.png)
 
@@ -34,12 +33,12 @@ from the server.
 To build the application and test it, you'll need two separate terminals:
 
 In the first one you'll start a local TCP Server. 
-Modify./components/tcp_client and ./server/server to use your IP address and desired port.
 
+Firstly, update ```./components/tcp_client``` and ```./server/server``` to use your IP address and desired port.
+Then run:
 ```sh
 python3 ./server/server.py
 ```
-
 In another terminal, build the app and flash it to the ESP32.
 
 ```sh
