@@ -27,4 +27,4 @@ jobs:
       
       # Builds ESP IDF Application
       - name: ESP-IDF build action
-        uses: sagar448/ESP-IDF-GitHub-Action@4.4
+        uses: sagar448/ESP-IDF-GitHub-Action@latest
