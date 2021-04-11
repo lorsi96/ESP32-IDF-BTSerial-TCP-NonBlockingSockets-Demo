@@ -28,7 +28,7 @@ from the server.
 - This charts shows which commands produce a change in the LED Blinking State
 - Note that, as stated in above sections, other commands exist but are not listed here as they don't produce any state update
 
-![diagram not found](./StateDiagram.png)
+![FSM](./FSM.png)
 
 ## How To Build n' Run (Ubuntu)
 To build the application and test it, you'll need two separate terminals:
