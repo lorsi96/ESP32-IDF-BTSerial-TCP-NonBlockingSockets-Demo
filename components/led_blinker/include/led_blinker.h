@@ -55,19 +55,19 @@ typedef enum {
  * 
  * @param blinkSpeed speed velocity according to PDM_BlinkSpeed_t enum.
  */
-void PDM_blinkInit(const PDM_BlinkSpeed_t blinkSpeed);
+void PDMBlink_Init(const PDM_BlinkSpeed_t blinkSpeed);
 
 /**
  * @brief Updates the blinkSpeed on the go.
  * 
  * @param blinkSpeed new speed.
  */
-void PDM_blinkSpeedUpdate(const PDM_BlinkSpeed_t blinkSpeed);
+void PDMBlink_SpeedUpdate(const PDM_BlinkSpeed_t blinkSpeed);
 
 /**
  * @brief Task to be run in the main loop of an application
  *        to keep the module going. 
  */
-void PDM_blinkTask();
+void PDMBlink_Task();
 
 #endif // __PDM_BLINK__
