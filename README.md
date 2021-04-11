@@ -28,7 +28,7 @@ from the server.
 - This charts shows which commands produce a change in the LED Blinking State
 - Note that, as stated in above sections, other commands exist but are not listed here as they don't produce any state update
 
-![diagram not found](StateDiagram.png "FSM")
+![diagram not found](./StateDiagram.png)
 
 ## How To Build n' Run (Ubuntu)
 To build the application and test it, you'll need two separate terminals:
@@ -36,15 +36,14 @@ To build the application and test it, you'll need two separate terminals:
 In the first one you'll start a local TCP Server. 
 Modify./components/tcp_client and ./server/server to use your IP address and desired port.
 
-´´´bash
+```sh
 python3 ./server/server.py
-´´´
+```
 
 In another terminal, build the app and flash it to the ESP32.
 
-´´´bash
-./docker/docker.build.sh # Builds the Docker image
-# Connect your ESP32 to your workstation
-./docker/docker.run.sh # Starts a Shell in the container
+```sh
+./docker/docker.build.sh
+./docker/docker.run.sh
 idf.py build flash monitor
-´´´
+```
