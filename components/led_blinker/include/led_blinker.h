@@ -29,47 +29,45 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  */
-#ifndef _BLE_CLIENT_
-#define _BLE_BLIENT_
+#ifndef __PDM_BLINK__
+#define __PDM_BLINK__
 
-#include "nvs.h"
-#include "nvs_flash.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "esp_log.h"
-#include "esp_bt.h"
-#include "esp_bt_main.h"
-#include "esp_gap_bt_api.h"
-#include "esp_bt_device.h"
-#include "esp_spp_api.h"
-
-#define EXAMPLE_DEVICE_NAME "ESP_SPP_ACCEPTOR"
+#include <stdint.h>
+#include "driver/gpio.h"
 
 
-typedef void(*IntConsumer_t)(const uint32_t value);
+#define BLINK_GPIO GPIO_NUM_2
+#define PDM_SLOW_SPEED_MS 2000
+#define PDM_FAST_SPEED_MS 1000
 
 /**
- * @brief Initializes the Bluetooth module.
+ * @brief Speeds at which the led blinker can run.
  * 
- * This module listens to Bluetooth Serial commands received from
- *  a Bluetooth Classic and forwards them to a handler.
- * 
- * @param onDataReceived handler that will consume captured messages.
  */
-void PDMBluetooth_init(IntConsumer_t onDataReceived);
+typedef enum {
+    PDM_BLINK_SPEED_SLOW = 0,
+    PDM_BLINK_SPEED_FAST = 1,
+    PDM_BLINK_ALWAYS_ON = 2,
+} PDM_BlinkSpeed_t;
 
-/** 
+/**
+ * @brief Initializes the blink module.
+ * 
+ * @param blinkSpeed speed velocity according to PDM_BlinkSpeed_t enum.
+ */
+void PDM_blinkInit(const PDM_BlinkSpeed_t blinkSpeed);
+
+/**
+ * @brief Updates the blinkSpeed on the go.
+ * 
+ * @param blinkSpeed new speed.
+ */
+void PDM_blinkSpeedUpdate(const PDM_BlinkSpeed_t blinkSpeed);
+
+/**
  * @brief Task to be run in the main loop of an application
  *        to keep the module going. 
- * @note Currently does nothing, but it's present so as to be
- *       consistent with the other modules of the PDM project.
-*/
-void PDMBluetooth_task();
-
-/**
- * @brief Deinitializes the Bluetooth module.
- * 
  */
-void PDMBluetooth_deinit(); /** TODO: Implement for future versions. */
+void PDM_blinkTask();
 
-#endif // _BLE_BLIENT_
+#endif // __PDM_BLINK__

@@ -27,49 +27,51 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
- *
+ * 
  */
-#ifndef _BLE_CLIENT_
-#define _BLE_BLIENT_
+/**
+ * @brief TCP Sockets client that sends and receives uint32_t values from a 
+ *         TCP Socket server.
+*/
+#ifndef _TCP_CLIENT_
+#define _TCP_CLIENT_
 
-#include "nvs.h"
-#include "nvs_flash.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+#include "esp_system.h"
+#include "esp_wifi.h"
+#include "esp_event.h"
 #include "esp_log.h"
-#include "esp_bt.h"
-#include "esp_bt_main.h"
-#include "esp_gap_bt_api.h"
-#include "esp_bt_device.h"
-#include "esp_spp_api.h"
 
-#define EXAMPLE_DEVICE_NAME "ESP_SPP_ACCEPTOR"
+#define HOST_IP_ADDR "192.168.0.14"
+#define PORT 3333
 
-
+/** Syntatic sugar  for functions receiving an int and returning void.*/
 typedef void(*IntConsumer_t)(const uint32_t value);
 
 /**
- * @brief Initializes the Bluetooth module.
+ * @brief Initializes the PDM Network module.
  * 
- * This module listens to Bluetooth Serial commands received from
- *  a Bluetooth Classic and forwards them to a handler.
+ * @param onDataReceived function to be called when a message from the 
+ *                        server arrives.
  * 
- * @param onDataReceived handler that will consume captured messages.
+ * @return true if initalization succeeded.
+ * @return false if there was an error when initializing the module.
  */
-void PDMBluetooth_init(IntConsumer_t onDataReceived);
-
-/** 
- * @brief Task to be run in the main loop of an application
- *        to keep the module going. 
- * @note Currently does nothing, but it's present so as to be
- *       consistent with the other modules of the PDM project.
-*/
-void PDMBluetooth_task();
+bool PDMNetwork_init(IntConsumer_t onDataReceived);
 
 /**
- * @brief Deinitializes the Bluetooth module.
+ * @brief Sends a message to the server.
  * 
+ * @param message to be sent.
  */
-void PDMBluetooth_deinit(); /** TODO: Implement for future versions. */
+void PDMNetwork_send(const uint32_t message);
 
-#endif // _BLE_BLIENT_
+/**
+ * @brief Task to be run in the main loop of an application
+ *        to keep the module going. 
+ * @note  This was only tested with a refresh rate of .5 seconds. 
+ *        There are no guarantees that it will or will not work with
+ *        higher or lower rates.
+ */
+void PDMNetwork_task();
+
+#endif // _TCP_CLIENT_

@@ -29,47 +29,52 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  */
-#ifndef _BLE_CLIENT_
-#define _BLE_BLIENT_
-
-#include "nvs.h"
-#include "nvs_flash.h"
+#include <stdio.h>
+#include "led_blinker.h"
+#include "esp_types.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+#include "freertos/timers.h"
 #include "esp_log.h"
-#include "esp_bt.h"
-#include "esp_bt_main.h"
-#include "esp_gap_bt_api.h"
-#include "esp_bt_device.h"
-#include "esp_spp_api.h"
 
-#define EXAMPLE_DEVICE_NAME "ESP_SPP_ACCEPTOR"
+static const TickType_t blinkSpeedTableTicks[] = {
+    pdMS_TO_TICKS(PDM_SLOW_SPEED_MS),
+    pdMS_TO_TICKS(PDM_FAST_SPEED_MS)
+};
 
+static PDM_BlinkSpeed_t currentBlinkSpeed;
+static TickType_t timeCount;
+static bool ledOn = true;
 
-typedef void(*IntConsumer_t)(const uint32_t value);
+void PDM_blinkInit(const PDM_BlinkSpeed_t blinkSpeed) {
+  gpio_reset_pin(BLINK_GPIO);
+  gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
+  gpio_set_level(BLINK_GPIO, 1);        
+  currentBlinkSpeed = blinkSpeed;
+  timeCount = xTaskGetTickCount();
+}
 
-/**
- * @brief Initializes the Bluetooth module.
- * 
- * This module listens to Bluetooth Serial commands received from
- *  a Bluetooth Classic and forwards them to a handler.
- * 
- * @param onDataReceived handler that will consume captured messages.
- */
-void PDMBluetooth_init(IntConsumer_t onDataReceived);
+void PDM_blinkSpeedUpdate(const PDM_BlinkSpeed_t blinkSpeed) {
+    currentBlinkSpeed = blinkSpeed;
+    timeCount = xTaskGetTickCount();
+    if(currentBlinkSpeed == PDM_BLINK_ALWAYS_ON) {
+        ledOn = true;
+        gpio_set_level(BLINK_GPIO, 1);        
+    }
+}
 
-/** 
- * @brief Task to be run in the main loop of an application
- *        to keep the module going. 
- * @note Currently does nothing, but it's present so as to be
- *       consistent with the other modules of the PDM project.
-*/
-void PDMBluetooth_task();
-
-/**
- * @brief Deinitializes the Bluetooth module.
- * 
- */
-void PDMBluetooth_deinit(); /** TODO: Implement for future versions. */
-
-#endif // _BLE_BLIENT_
+void PDM_blinkTask() {
+    ESP_LOGI("BlinkTask", "Switch");
+    switch(currentBlinkSpeed) {
+    case PDM_BLINK_SPEED_SLOW ... PDM_BLINK_SPEED_FAST:
+        ESP_LOGI("BlinkTask", "Speed Running %d", currentBlinkSpeed);
+        if(xTaskGetTickCount() - timeCount > blinkSpeedTableTicks[currentBlinkSpeed]) {
+            ledOn = !ledOn;
+            gpio_set_level(BLINK_GPIO, ledOn);
+            timeCount = xTaskGetTickCount();
+        }
+        break; 
+    default:
+        ESP_LOGI("BlinkTask", "Default");
+        break;
+    }
+}
