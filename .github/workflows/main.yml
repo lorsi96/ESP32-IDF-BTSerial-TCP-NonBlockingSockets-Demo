@@ -18,16 +18,10 @@ jobs:
   # This workflow contains a single job called "build"
   build:
     runs-on: ubuntu-latest
-
     container:
       image:  espressif/idf:latest
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-      
-      # Builds ESP IDF Application
-      - name: ESP-IDF Build
       - run: idf.py build
           
