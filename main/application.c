@@ -46,78 +46,88 @@
 /************************************************************/
 /* Feature Enable/Disable Defines                           */
 /************************************************************/
-#define LORSI_NET  // Enables WiFi Client.
-#define LORSI_BT // Enables BT Server.
+#define LORSI_NET  /**< Enables WiFi Client.*/
+#define LORSI_BT /**< Enables BT Server.*/
 
 /************************************************************/
-/* Types Definitions                                        */
+/* Type Definitions                                         */
 /************************************************************/
 
 typedef void (*PDM_Runnable_t)();
 
+/**
+ * @brief Source of an incoming event.
+ * 
+ * Events can be originated from either the TCP server or
+ * the BT client. 
+ */
 typedef enum {
-    PDM_NONE,
-    PDM_WIFI,
-    PDM_BT,
+    PDM_NONE, /**< No source. Only used at the start of the program.*/
+    PDM_WIFI, /**< Event from WiFi. Currently it identifies a message from the TCP server.*/
+    PDM_BT,   /**< Event from BT Serial.*/
 } PDM_DataSource_t;
 
+/**
+ * @brief Contains events captured by this application.
+ */
 typedef struct {
-    PDM_DataSource_t source;
-    uint32_t data;
+    PDM_DataSource_t source; /**< Source of the incoming event.*/
+    uint32_t data; /**< Data received. Currently only supports uint32_t data.*/
 } PDM_RequestEvent_t;
 
+/**
+ * @brief FSM states type.
+ */
 typedef enum {
-    SLOW_BLINK = 0,
-    FAST_BLINK,
-    BT_DISABLED,
+    SLOW_BLINK = 0, /**< BuiltIn LED Blinking slowly.*/
+    FAST_BLINK,  /**< BuiltIn LED Blinking fast.*/
+    BT_DISABLED,  /**< BlueTooth events ignored - LED always on.*/
 } PDM_State_t;
 
+/**
+ * @brief FSM Entry for the state table. 
+ */
 typedef struct {
-    PDM_State_t currentState;
-    PDM_RequestEvent_t event;
-    PDM_State_t nextState;
-    PDM_Runnable_t handler;
+    PDM_State_t currentState;   /**< State where the FSM is currently in.*/
+    PDM_RequestEvent_t event;   /**< Relevant event for the current state.*/
+    PDM_State_t nextState;      /**< State to move to after the event is processed.*/
+    PDM_Runnable_t handler;     /**< Handler to be run when the event happens.*/
 } PDM_FsmEntry_t; 
 
 /************************************************************/
 /* FSM State Variables                                      */
 /************************************************************/
-static PDM_State_t currentState_ = BT_DISABLED;
-static bool isCachedEventLocked_ = false;
-static bool isRequestPending_ = false;
-static PDM_RequestEvent_t cachedEvent_ = {
-    .source = PDM_NONE,
+static PDM_State_t currentState_ = BT_DISABLED; /**< Current FSM state.*/
+static bool isRequestPending_ = false; /**< Signals whether an event needs attention or not.*/
+static PDM_RequestEvent_t cachedEvent_ = { /**< Cached event to be processed by the FSM.*/
+    .source = PDM_NONE, 
     .data = 0,
 };
+static bool isCachedEventLocked_ = false; /**< Whether the cachedEvent is being locked by a handler or not.*/
 
 /************************************************************/
 /* Event "Interruption" Subroutines                         */
 /************************************************************/
-static void PDM_WiFiDataHandler(uint32_t data) {
-#ifdef LORSI_NET
-    // If another event is being saved or enqueued, ignore this request.
+inline static void PDM_DataHandler_(const uint32_t data, const PDM_DataSource_t source) {
     if(isRequestPending_ || isCachedEventLocked_)  { 
-        return;
+        return; /** Return if there's already an event pending or if an event is being processed. */
     }
     isCachedEventLocked_ = true;
-    cachedEvent_.source = PDM_WIFI;
+    cachedEvent_.source = source;
     cachedEvent_.data = data;
     isRequestPending_ = true;
     isCachedEventLocked_ = false;
+}
+
+static void PDM_WiFiDataHandler(uint32_t data) {
+#ifdef LORSI_NET
+    PDM_DataHandler_(data, PDM_WIFI);
 #endif
 }
 
 static void PDM_BtDataHandler(uint32_t data) {
 #ifdef LORSI_BT
-    // If another event is being saved or enqueued, ignore this request.
-    if(isRequestPending_ || isCachedEventLocked_)  { 
-        return;
-    }
-    isCachedEventLocked_ = true;
-    cachedEvent_.source = PDM_BT;
-    cachedEvent_.data = data;
-    isRequestPending_ = true;
-    isCachedEventLocked_ = false;
+    PDM_DataHandler_(data, PDM_BT);
 #endif
 }
 
@@ -140,23 +150,11 @@ static void sendCurrentBTServiceStatus() {
     PDMNetwork_send(isBtEnabled() ? 0 : 1);
 }
 
-static void toggleAndSendBTServiceStatus() {
-    PDMNetwork_send(isBtEnabled() ? 1 : 0);
+static void updateBlink() {
+    PDMBlink_SpeedUpdate((PDM_BlinkSpeed_t)currentState_); // Code matches state enum value.
 }
 
 static void doNothing() {}
-
-static void setFastBlink() {
-    PDM_blinkSpeedUpdate(PDM_BLINK_SPEED_FAST);
-}
-
-static void setSlowBlink() {
-    PDM_blinkSpeedUpdate(PDM_BLINK_SPEED_SLOW);
-}
-
-static void updateBlink() {
-    PDM_blinkSpeedUpdate((PDM_BlinkSpeed_t)currentState_);
-}
 
 /************************************************************/
 /* FSM Definition                                           */
@@ -201,6 +199,10 @@ static void fsmSpin_() {
 /************************************************************/
 /* Other Prv Methods                                        */
 /************************************************************/
+
+/**
+ * @brief Initializes the ESP32 Board.
+ */
 static void PDM_boardInit() {
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -209,9 +211,12 @@ static void PDM_boardInit() {
     }
 }
 
+/**
+ * @brief Initializes the ESP32 Board and the Wifi/BT/LED Modules.
+ */
 static void init() {
     PDM_boardInit();
-    PDM_blinkInit(PDM_BLINK_ALWAYS_ON);
+    PDMBlink_Init(PDM_BLINK_ALWAYS_ON);
 #ifdef LORSI_BT
     PDMBluetooth_init(PDM_BtDataHandler);
 #endif
@@ -225,16 +230,27 @@ static void init() {
 #endif
 }
 
+/**
+ * @brief Loop function to keep the program updated and running.
+ * 
+ */
 static void loop() {
-    PDM_blinkTask();
+    PDMBlink_Task();
     #ifdef LORSI_NET
     PDMNetwork_task();
     #endif
-    // PDMBluetooth_task(); -> Not needed, 'cause concurrency issues are fun (:
+    #ifdef LORSI_BT
+    PDMBluetooth_task();
+    #endif
     fsmSpin_();
 }
 
-void superLoopTask(void* pvParameters) {
+/**
+ * @brief Task to imitate a Superloop architecture.
+ *       
+ * PDM Shouldn't require RTOS stuff directly.
+ */
+void superLoopTask(void* _) {
     init();
     for(;;) {
         loop();

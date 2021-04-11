@@ -45,7 +45,7 @@ static PDM_BlinkSpeed_t currentBlinkSpeed;
 static TickType_t timeCount;
 static bool ledOn = true;
 
-void PDM_blinkInit(const PDM_BlinkSpeed_t blinkSpeed) {
+void PDMBlink_Init(const PDM_BlinkSpeed_t blinkSpeed) {
   gpio_reset_pin(BLINK_GPIO);
   gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
   gpio_set_level(BLINK_GPIO, 1);        
@@ -53,7 +53,7 @@ void PDM_blinkInit(const PDM_BlinkSpeed_t blinkSpeed) {
   timeCount = xTaskGetTickCount();
 }
 
-void PDM_blinkSpeedUpdate(const PDM_BlinkSpeed_t blinkSpeed) {
+void PDMBlink_SpeedUpdate(const PDM_BlinkSpeed_t blinkSpeed) {
     currentBlinkSpeed = blinkSpeed;
     timeCount = xTaskGetTickCount();
     if(currentBlinkSpeed == PDM_BLINK_ALWAYS_ON) {
@@ -62,7 +62,7 @@ void PDM_blinkSpeedUpdate(const PDM_BlinkSpeed_t blinkSpeed) {
     }
 }
 
-void PDM_blinkTask() {
+void PDMBlink_Task() {
     ESP_LOGI("BlinkTask", "Switch");
     switch(currentBlinkSpeed) {
     case PDM_BLINK_SPEED_SLOW ... PDM_BLINK_SPEED_FAST:
