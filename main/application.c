@@ -1,7 +1,38 @@
+/* Copyright 2015-2016, lorsi96 (Lucas Orsi).
+ * All rights reserved.
+ *
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its
+ *    contributors may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ */
 #include <stdio.h>
 #include <esp_system.h>
 
-#include "wifi_server.h"
+#include "tcp_client.h"
 #include "bluetooth_client.h"
 
 #include "protocol_examples_common.h"
@@ -10,6 +41,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
+#include "led_blinker.h"
 
 /************************************************************/
 /* Feature Enable/Disable Defines                           */
@@ -64,7 +96,6 @@ static PDM_RequestEvent_t cachedEvent_ = {
 static void PDM_WiFiDataHandler(uint32_t data) {
 #ifdef LORSI_NET
     // If another event is being saved or enqueued, ignore this request.
-    ESP_LOGI("Main", "Wifi: %d", data);
     if(isRequestPending_ || isCachedEventLocked_)  { 
         return;
     }
@@ -79,7 +110,6 @@ static void PDM_WiFiDataHandler(uint32_t data) {
 static void PDM_BtDataHandler(uint32_t data) {
 #ifdef LORSI_BT
     // If another event is being saved or enqueued, ignore this request.
-    ESP_LOGI("Main", "BT");
     if(isRequestPending_ || isCachedEventLocked_)  { 
         return;
     }
@@ -95,12 +125,10 @@ static void PDM_BtDataHandler(uint32_t data) {
 /* FSM Handlers                                             */
 /************************************************************/
 static inline bool isBtEnabled() {
-    ESP_LOGI("Main", "WifiRQ");
     return currentState_ != BT_DISABLED;
 }
 
 static inline uint32_t getBlinkingStatusCode() {
-    ESP_LOGI("Main", "WifiRQBlink");
     return (uint32_t)currentState_; // Code matches state enum value.
 }
 
@@ -116,14 +144,18 @@ static void toggleAndSendBTServiceStatus() {
     PDMNetwork_send(isBtEnabled() ? 1 : 0);
 }
 
+static void doNothing() {}
+
 static void setFastBlink() {
-    ESP_LOGI("Main", "BlinkFast");
-    // TODO
+    PDM_blinkSpeedUpdate(PDM_BLINK_SPEED_FAST);
 }
 
 static void setSlowBlink() {
-    ESP_LOGI("Main", "BlinkSlow");
-    // TODO
+    PDM_blinkSpeedUpdate(PDM_BLINK_SPEED_SLOW);
+}
+
+static void updateBlink() {
+    PDM_blinkSpeedUpdate((PDM_BlinkSpeed_t)currentState_);
 }
 
 /************************************************************/
@@ -138,12 +170,12 @@ static const PDM_FsmEntry_t fsmTable_[] = {
     {SLOW_BLINK,   {PDM_WIFI, 1},    SLOW_BLINK,   sendCurrentBTServiceStatus},
     {FAST_BLINK,   {PDM_WIFI, 1},    FAST_BLINK,   sendCurrentBTServiceStatus},
 
-    {BT_DISABLED,  {PDM_WIFI, 2},    FAST_BLINK,    toggleAndSendBTServiceStatus},
-    {SLOW_BLINK,   {PDM_WIFI, 2},    BT_DISABLED,    toggleAndSendBTServiceStatus},
-    {FAST_BLINK,   {PDM_WIFI, 2},    BT_DISABLED,    toggleAndSendBTServiceStatus},
+    {BT_DISABLED,  {PDM_WIFI, 2},    FAST_BLINK,    sendCurrentBTServiceStatus},
+    {SLOW_BLINK,   {PDM_WIFI, 2},    BT_DISABLED,   sendCurrentBTServiceStatus},
+    {FAST_BLINK,   {PDM_WIFI, 2},    BT_DISABLED,   sendCurrentBTServiceStatus},
 
-    {SLOW_BLINK,   {PDM_BT, 0},      FAST_BLINK,    setFastBlink},
-    {FAST_BLINK,   {PDM_BT, 1},      SLOW_BLINK,    setSlowBlink},
+    {SLOW_BLINK,   {PDM_BT, 0},      FAST_BLINK,    doNothing},
+    {FAST_BLINK,   {PDM_BT, 1},      SLOW_BLINK,    doNothing},
 };
 
 /************************************************************/
@@ -159,7 +191,7 @@ static void fsmSpin_() {
            fsmTable_[i].event.data == cachedEvent_.data) {
                fsmTable_[i].handler();
                currentState_ = fsmTable_[i].nextState;
-               ESP_LOGI("Main", "Current: %d", currentState_);
+               updateBlink();
                break;
            }
     }
@@ -179,6 +211,7 @@ static void PDM_boardInit() {
 
 static void init() {
     PDM_boardInit();
+    PDM_blinkInit(PDM_BLINK_ALWAYS_ON);
 #ifdef LORSI_BT
     PDMBluetooth_init(PDM_BtDataHandler);
 #endif
@@ -193,6 +226,7 @@ static void init() {
 }
 
 static void loop() {
+    PDM_blinkTask();
     #ifdef LORSI_NET
     PDMNetwork_task();
     #endif
@@ -204,12 +238,10 @@ void superLoopTask(void* pvParameters) {
     init();
     for(;;) {
         loop();
-        vTaskDelay(2000 / portTICK_PERIOD_MS);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 }
 
-void app_main(void)
-{
-
+void app_main(void) {
     xTaskCreate(superLoopTask, "lorsi_pdm", 4096, NULL, 5, NULL);
 }
