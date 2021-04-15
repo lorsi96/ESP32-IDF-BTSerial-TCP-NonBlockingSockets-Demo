@@ -37,8 +37,8 @@
 
 
 #define BLINK_GPIO GPIO_NUM_2
-#define PDM_SLOW_SPEED_MS 2000
-#define PDM_FAST_SPEED_MS 1000
+#define PDM_SLOW_SPEED_MS 1000
+#define PDM_FAST_SPEED_MS 200
 
 /**
  * @brief Speeds at which the led blinker can run.
