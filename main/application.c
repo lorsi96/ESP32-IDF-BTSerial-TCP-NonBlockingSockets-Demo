@@ -254,7 +254,7 @@ void superLoopTask(void* _) {
     init();
     for(;;) {
         loop();
-        vTaskDelay(500 / portTICK_PERIOD_MS);
+        vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
 

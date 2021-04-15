@@ -123,7 +123,7 @@ class TcpServer:
                     data = conn.recv(1024, )
                     if data:
                         print(DECODERS[choice][str(data)[2]]) # Data comes in "b'n\0" format, where n is the interesting part.    
-                    time.sleep(5)
+                    time.sleep(1)
                 conn.close()
             except socket.error as e:
                 print('Running server failed:{}'.format(e))
