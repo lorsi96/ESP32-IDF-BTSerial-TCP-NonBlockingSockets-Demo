@@ -47,15 +47,12 @@
 
 static const char *TAG = "tcp_client";
 static IntConsumer_t onDataReceivedCallback;
-static uint8_t reconnect = 0;
-
 
 /** Internal Connection Constants. ****************/
 static const char host_ip[] = HOST_IP_ADDR;
 static const int addr_family = AF_INET;
 static const int ip_protocol = IPPROTO_IP;
 
-// static char tx_buffer[128];
 static char rx_buffer[128];
 static struct sockaddr_in dest_addr;
 
@@ -84,7 +81,8 @@ bool PDMNetwork_init(IntConsumer_t onDataReceived) {
     }
     ESP_LOGI(TAG, "Socket created, connecting to %s:%d", host_ip, PORT);
 
-    int err = connect(sock, (struct sockaddr *)&dest_addr, sizeof(struct sockaddr_in6));
+    int err = connect(
+        sock, (struct sockaddr *)&dest_addr, sizeof(struct sockaddr_in6));
 
     if (fcntl(sock, F_SETFL,  O_NONBLOCK) < 0) {
         ESP_LOGE(TAG, "Failed to set nonblocking error");
@@ -120,9 +118,8 @@ void PDMNetwork_task() {
     int len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, MSG_DONTWAIT);
     ESP_LOGD(TAG, "After Reception %d", len);
     if (len > 0) {
-        reconnect = 0;
         onDataReceivedCallback((uint32_t)(rx_buffer[0]-0x30));    
-        rx_buffer[len] = 0; // Null-terminate whatever we received and treat like a string
+        rx_buffer[len] = 0;
         ESP_LOGI(TAG, "Received %d bytes from %s:", len, host_ip);
         return;
     }
